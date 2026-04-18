@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.jdcr.jdcrpermission.JdcrOpenPageFragment
 import com.jdcr.jdcrpermission.JdcrPermissionFragment
 import com.jdcr.jdcrpermission.JdcrPermissionLog
+import com.jdcr.jdcrpermission.JdcrPermissionUtils
 import com.jdcr.jdcrpermissioncommon.ui.theme.JdcrPermissionCommonTheme
 
 class MainActivity : FragmentActivity() {
@@ -33,10 +34,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         JdcrPermissionLog.enable(true, cacheDir.absolutePath + "/log.txt")
-        JdcrPermissionFragment.requestPermission(
-            this@MainActivity,
-            arrayOf(Manifest.permission.CAMERA)
-        ) { allGranted, map ->
+        JdcrPermissionUtils.checkAndRequest(this, Manifest.permission.CAMERA) { allGranted, map ->
 
         }
         JdcrPermissionFragment.requestPermission(
