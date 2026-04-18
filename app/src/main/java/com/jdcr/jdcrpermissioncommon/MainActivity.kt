@@ -37,16 +37,7 @@ class MainActivity : FragmentActivity() {
         JdcrPermissionUtils.checkAndRequest(this, Manifest.permission.CAMERA) { allGranted, map ->
 
         }
-        JdcrPermissionFragment.requestPermission(
-            this@MainActivity,
-            arrayOf(Manifest.permission.CAMERA)
-        ) { allGranted, map ->
-
-        }
-        JdcrOpenPageFragment.open(this@MainActivity, Settings.ACTION_SETTINGS) {
-
-        }
-        JdcrOpenPageFragment.open(this@MainActivity, Settings.ACTION_SETTINGS) {
+        JdcrPermissionUtils.openLocationSettings(this) {
 
         }
         setContent {

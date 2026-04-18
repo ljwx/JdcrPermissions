@@ -1,7 +1,9 @@
 package com.jdcr.jdcrpermission
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
@@ -83,7 +85,17 @@ class JdcrOpenPageFragment : Fragment() {
         val l = launcher ?: return
         hasLaunched = true
         JdcrPermissionLog.i("执行系统跳转页面")
-        l.launch(Intent(act))
+        l.launch(buildIntent(act))
+    }
+
+    private fun buildIntent(act: String): Intent {
+        return if (act == Settings.ACTION_APPLICATION_DETAILS_SETTINGS) {
+            Intent(act).apply {
+                data = Uri.fromParts("package", requireContext().packageName, null)
+            }
+        } else {
+            Intent(act)
+        }
     }
 
     override fun onDestroy() {

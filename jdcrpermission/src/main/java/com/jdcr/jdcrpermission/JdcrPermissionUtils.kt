@@ -2,6 +2,7 @@ package com.jdcr.jdcrpermission
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
@@ -34,6 +35,27 @@ object JdcrPermissionUtils {
         } else {
             request(activity, arrayOf(permission), callback)
         }
+    }
+
+    fun openAppSettings(
+        activity: FragmentActivity,
+        callback: (() -> Unit)
+    ) {
+        JdcrOpenPageFragment.open(activity, Settings.ACTION_APPLICATION_DETAILS_SETTINGS, callback)
+    }
+
+    fun openBluetoothSettings(
+        activity: FragmentActivity,
+        callback: (() -> Unit)
+    ) {
+        JdcrOpenPageFragment.open(activity, Settings.ACTION_BLUETOOTH_SETTINGS, callback)
+    }
+
+    fun openLocationSettings(
+        activity: FragmentActivity,
+        callback: (() -> Unit)
+    ) {
+        JdcrOpenPageFragment.open(activity, Settings.ACTION_LOCATION_SOURCE_SETTINGS, callback)
     }
 
 }
