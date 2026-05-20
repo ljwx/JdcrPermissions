@@ -30,9 +30,9 @@ class MainActivity : AppCompatActivity() {
         JdcrPermissionUtils.checkAndRequest(this, Manifest.permission.CAMERA) { allGranted, map ->
 
         }
-        JdcrPermissionUtils.openLocationSettings(this) {
-
-        }
+//        JdcrPermissionUtils.openLocationSettings(this) {
+//
+//        }
         setContent {
             JdcrPermissionCommonTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
