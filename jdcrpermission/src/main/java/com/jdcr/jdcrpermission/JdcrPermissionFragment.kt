@@ -3,8 +3,8 @@ package com.jdcr.jdcrpermission
 import android.os.Bundle
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 
 class JdcrPermissionFragment : Fragment() {
 
@@ -17,7 +17,7 @@ class JdcrPermissionFragment : Fragment() {
         }
 
         fun requestPermission(
-            activity: FragmentActivity,
+            activity: AppCompatActivity,
             permissions: Array<String>,
             callback: ((allGranted: Boolean, Map<String, Boolean>) -> Unit)?
         ) {
