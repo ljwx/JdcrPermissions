@@ -3,8 +3,8 @@ package com.jdcr.jdcrpermission
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 
 object JdcrPermissionUtils {
 
@@ -18,7 +18,7 @@ object JdcrPermissionUtils {
     }
 
     fun request(
-        activity: AppCompatActivity,
+        activity: FragmentActivity,
         permissions: Array<String>,
         callback: ((allGranted: Boolean, Map<String, Boolean>) -> Unit)?
     ) {
@@ -26,7 +26,7 @@ object JdcrPermissionUtils {
     }
 
     fun checkAndRequest(
-        activity: AppCompatActivity,
+        activity: FragmentActivity,
         permission: String,
         callback: ((allGranted: Boolean, Map<String, Boolean>) -> Unit)?
     ) {
@@ -38,21 +38,21 @@ object JdcrPermissionUtils {
     }
 
     fun openAppSettings(
-        activity: AppCompatActivity,
+        activity: FragmentActivity,
         callback: (() -> Unit)
     ) {
         JdcrOpenPageFragment.open(activity, Settings.ACTION_APPLICATION_DETAILS_SETTINGS, callback)
     }
 
     fun openBluetoothSettings(
-        activity: AppCompatActivity,
+        activity: FragmentActivity,
         callback: (() -> Unit)
     ) {
         JdcrOpenPageFragment.open(activity, Settings.ACTION_BLUETOOTH_SETTINGS, callback)
     }
 
     fun openLocationSettings(
-        activity: AppCompatActivity,
+        activity: FragmentActivity,
         callback: (() -> Unit)
     ) {
         JdcrOpenPageFragment.open(activity, Settings.ACTION_LOCATION_SOURCE_SETTINGS, callback)

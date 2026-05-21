@@ -18,11 +18,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.fragment.app.FragmentActivity
 import com.jdcr.jdcrpermission.JdcrPermissionLog
 import com.jdcr.jdcrpermission.JdcrPermissionUtils
 import com.jdcr.jdcrpermissioncommon.ui.theme.JdcrPermissionCommonTheme
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
