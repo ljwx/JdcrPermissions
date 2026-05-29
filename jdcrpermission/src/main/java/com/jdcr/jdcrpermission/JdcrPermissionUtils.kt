@@ -8,54 +8,23 @@ import androidx.fragment.app.FragmentActivity
 
 object JdcrPermissionUtils {
 
-    fun check(context: Context, permission: String): Boolean {
-        val granted = ContextCompat.checkSelfPermission(
-            context.applicationContext,
-            permission
-        ) == PackageManager.PERMISSION_GRANTED
-        JdcrPermissionLog.w("权限检查结果,$permission:$granted")
-        return granted
-    }
-
+    fun check(context: Context, permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context.applicationContext, permission) == PackageManager.PERMISSION_GRANTED
     fun request(
         activity: FragmentActivity,
         permissions: Array<String>,
         callback: ((allGranted: Boolean, Map<String, Boolean>) -> Unit)?
     ) {
-        JdcrPermissionFragment.requestPermission(activity, permissions, callback)
+        JdcrPermission.with(activity).permissions(*permissions).request { r ->
+            callback?.invoke(r.allGranted, r.granted.associateWith { true } + r.denied.associateWith { false })
+        }
     }
-
     fun checkAndRequest(
         activity: FragmentActivity,
         permission: String,
         callback: ((allGranted: Boolean, Map<String, Boolean>) -> Unit)?
-    ) {
-        if (check(activity, permission)) {
-            callback?.invoke(true, mapOf(permission to true))
-        } else {
-            request(activity, arrayOf(permission), callback)
-        }
-    }
-
-    fun openAppSettings(
-        activity: FragmentActivity,
-        callback: (() -> Unit)
-    ) {
+    ) = request(activity, arrayOf(permission), callback)
+    fun openAppSettings(activity: FragmentActivity, callback: () -> Unit) =
         JdcrOpenPageFragment.open(activity, Settings.ACTION_APPLICATION_DETAILS_SETTINGS, callback)
-    }
-
-    fun openBluetoothSettings(
-        activity: FragmentActivity,
-        callback: (() -> Unit)
-    ) {
-        JdcrOpenPageFragment.open(activity, Settings.ACTION_BLUETOOTH_SETTINGS, callback)
-    }
-
-    fun openLocationSettings(
-        activity: FragmentActivity,
-        callback: (() -> Unit)
-    ) {
-        JdcrOpenPageFragment.open(activity, Settings.ACTION_LOCATION_SOURCE_SETTINGS, callback)
-    }
 
 }
