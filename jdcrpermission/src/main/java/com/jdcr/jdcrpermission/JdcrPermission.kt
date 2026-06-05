@@ -55,7 +55,7 @@ class JdcrPermission private constructor(
     fun onExplainBeforeRequest(block: ExplainScope.(deniedList: List<String>) -> Unit) =
         apply { before = block }
 
-    fun onExplainAfterDenied(block: ExplainScope.(permanentlyDeniedList: List<String>) -> Unit) =
+    fun onExplainAfterDenied(block: ExplainScope.(foreverDeniedList: List<String>) -> Unit) =
         apply { after = block }
 
     fun request(callback: (JdcrPermissionResult) -> Unit) {
