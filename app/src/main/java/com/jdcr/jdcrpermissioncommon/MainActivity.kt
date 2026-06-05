@@ -1,14 +1,9 @@
 package com.jdcr.jdcrpermissioncommon
 
 import android.Manifest
-import android.content.Context
 import android.os.Bundle
-import android.provider.Settings
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -19,8 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
-import com.jdcr.jdcrpermission.JdcrPermissionLog
-import com.jdcr.jdcrpermission.JdcrPermissionUtils
+import com.jdcr.jdcrpermission.JdcrPermission
+import com.jdcr.jdcrpermission.util.JdcrPermissionLog
 import com.jdcr.jdcrpermissioncommon.ui.theme.JdcrPermissionCommonTheme
 
 class MainActivity : FragmentActivity() {
@@ -28,9 +23,11 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         JdcrPermissionLog.enable(true, cacheDir.absolutePath + "/log.txt")
-        JdcrPermissionUtils.checkAndRequest(this, Manifest.permission.CAMERA) { allGranted, map ->
+
+        JdcrPermission.with(this).onExplainBeforeRequest {
 
         }
+
 //        JdcrPermissionUtils.openLocationSettings(this) {
 //
 //        }

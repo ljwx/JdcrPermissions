@@ -1,4 +1,4 @@
-package com.jdcr.jdcrpermission
+package com.jdcr.jdcrpermission.util
 
 import com.jdcr.jdcrlog.JdcrLogBase
 
