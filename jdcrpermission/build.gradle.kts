@@ -36,7 +36,7 @@ android {
 dependencies {
     api("androidx.appcompat:appcompat:1.3.1")
     api("androidx.lifecycle:lifecycle-common:2.5.1")
-    api("com.github.ljwx:jdcrlog:1.2.5")
+    api("com.github.ljwx.jdcrlog:jdcrlog-android:1.3.1-SNAPSHOT")
 }
 
 afterEvaluate {
