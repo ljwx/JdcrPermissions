@@ -52,4 +52,11 @@ object JdcrPermissionUtils {
         ).start()
     }
 
+    fun openIntent(activity: FragmentActivity, intent: Intent, callback: () -> Unit) {
+        JdcrOpenActionHandler(
+            activity, activity.activityResultRegistry,
+            intent, callback
+        ).start()
+    }
+
 }
