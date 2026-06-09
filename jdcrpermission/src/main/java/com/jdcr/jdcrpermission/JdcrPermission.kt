@@ -1,5 +1,6 @@
 package com.jdcr.jdcrpermission
 
+import android.content.Context
 import android.view.View
 import androidx.activity.result.ActivityResultRegistry
 import androidx.fragment.app.Fragment
@@ -23,25 +24,37 @@ class JdcrPermission private constructor(
     internal val aliveCheck: () -> Boolean
 ) {
     companion object {
-        fun with(activity: FragmentActivity) = JdcrPermission(
-            activity, activity, activity.activityResultRegistry
-        ) { !activity.isFinishing && !activity.isDestroyed }
+        fun with(activity: FragmentActivity): Result<JdcrPermission> = Result.success(
+            JdcrPermission(
+                activity, activity, activity.activityResultRegistry
+            ) { !activity.isFinishing && !activity.isDestroyed })
 
-        fun with(fragment: Fragment) = JdcrPermission(
-            fragment.requireActivity(),
-            fragment,
-            fragment.requireActivity().activityResultRegistry
-        ) {
-            fragment.isAdded &&
-                    fragment.activity?.let { !it.isFinishing && !it.isDestroyed } == true
+        fun with(fragment: Fragment): Result<JdcrPermission> = Result.success(
+            JdcrPermission(
+                fragment.requireActivity(),
+                fragment,
+                fragment.requireActivity().activityResultRegistry
+            ) {
+                fragment.isAdded &&
+                        fragment.activity?.let { !it.isFinishing && !it.isDestroyed } == true
+            })
+
+        fun with(view: View): Result<JdcrPermission> {
+            return runCatching {
+                val activity =
+                    JdcrPermissionUtils.context2Activity(view.context) as FragmentActivity
+                JdcrPermission(activity, activity, activity.activityResultRegistry) {
+                    !activity.isFinishing && !activity.isDestroyed
+                }
+            }
         }
 
-        @Throws(IllegalStateException::class)
-        fun withView(view: View): JdcrPermission {
-            val activity = JdcrPermissionUtils.context2Activity(view.context) as? FragmentActivity
-                ?: throw IllegalStateException("context无法转换为Activity")
-            return JdcrPermission(activity, activity, activity.activityResultRegistry) {
-                !activity.isFinishing && !activity.isDestroyed
+        fun with(context: Context): Result<JdcrPermission> {
+            return runCatching {
+                val activity = JdcrPermissionUtils.context2Activity(context) as FragmentActivity
+                JdcrPermission(activity, activity, activity.activityResultRegistry) {
+                    !activity.isFinishing && !activity.isDestroyed
+                }
             }
         }
 
