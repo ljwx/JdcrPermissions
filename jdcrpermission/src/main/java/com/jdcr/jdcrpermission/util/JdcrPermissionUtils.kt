@@ -17,15 +17,6 @@ object JdcrPermissionUtils {
     private const val SP = "jdcr_permission_memory"
     private const val KEY = "requested"
 
-    internal fun context2Activity(context: Context): Activity? {
-        if (context is Activity) {
-            return context
-        } else if (context is ContextWrapper) {
-            return context2Activity(context.baseContext)
-        }
-        return null
-    }
-
     internal fun markRequested(context: Context, permissions: Collection<String>) {
         val sp = context.applicationContext.getSharedPreferences(SP, Context.MODE_PRIVATE)
         val set = sp.getStringSet(KEY, emptySet())!!.toMutableSet().apply { addAll(permissions) }

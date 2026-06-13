@@ -36,6 +36,7 @@ android {
 dependencies {
     api(jdcr.androidx.appcompat)
     api(jdcr.androidx.lifecycle)
+    api(jdcr.jdcr.dev.base)
     api(jdcr.jdcr.log)
 }
 

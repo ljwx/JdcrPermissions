@@ -6,6 +6,7 @@ import androidx.activity.result.ActivityResultRegistry
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
+import com.jdcr.jdcrbase.page.toActivity
 import com.jdcr.jdcrpermission.handler.JdcrPermissionDispatcher
 import com.jdcr.jdcrpermission.handler.JdcrPermissionHandler
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
@@ -41,8 +42,7 @@ class JdcrPermission private constructor(
 
         fun with(view: View): Result<JdcrPermission> {
             return runCatching {
-                val activity =
-                    JdcrPermissionUtils.context2Activity(view.context) as FragmentActivity
+                val activity = view.context.toActivity() as FragmentActivity
                 JdcrPermission(activity, activity, activity.activityResultRegistry) {
                     !activity.isFinishing && !activity.isDestroyed
                 }
@@ -51,7 +51,7 @@ class JdcrPermission private constructor(
 
         fun with(context: Context): Result<JdcrPermission> {
             return runCatching {
-                val activity = JdcrPermissionUtils.context2Activity(context) as FragmentActivity
+                val activity = context.toActivity() as FragmentActivity
                 JdcrPermission(activity, activity, activity.activityResultRegistry) {
                     !activity.isFinishing && !activity.isDestroyed
                 }
