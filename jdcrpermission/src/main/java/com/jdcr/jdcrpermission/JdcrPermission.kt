@@ -24,12 +24,12 @@ class JdcrPermission private constructor(
     internal val aliveCheck: () -> Boolean
 ) {
     companion object {
-        fun with(activity: FragmentActivity): Result<JdcrPermission> = Result.success(
+        fun with(activity: FragmentActivity): JdcrPermission =
             JdcrPermission(
                 activity, activity, activity.activityResultRegistry
-            ) { !activity.isFinishing && !activity.isDestroyed })
+            ) { !activity.isFinishing && !activity.isDestroyed }
 
-        fun with(fragment: Fragment): Result<JdcrPermission> = Result.success(
+        fun with(fragment: Fragment): JdcrPermission =
             JdcrPermission(
                 fragment.requireActivity(),
                 fragment,
@@ -37,7 +37,7 @@ class JdcrPermission private constructor(
             ) {
                 fragment.isAdded &&
                         fragment.activity?.let { !it.isFinishing && !it.isDestroyed } == true
-            })
+            }
 
         fun with(view: View): Result<JdcrPermission> {
             return runCatching {

@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    alias(jdcr.plugins.android.library)
+    alias(jdcr.plugins.kotlin.android)
     `maven-publish`
 }
 
@@ -34,9 +34,9 @@ android {
 }
 
 dependencies {
-    api("androidx.appcompat:appcompat:1.3.1")
-    api("androidx.lifecycle:lifecycle-common:2.5.1")
-    api("com.github.ljwx.jdcrlog:jdcrlog-android:1.3.1-SNAPSHOT")
+    api(jdcr.androidx.appcompat)
+    api(jdcr.androidx.lifecycle)
+    api(jdcr.jdcr.log)
 }
 
 afterEvaluate {

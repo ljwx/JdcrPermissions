@@ -22,7 +22,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        JdcrPermissionLog.enable(true, cacheDir.absolutePath + "/log.txt")
+        JdcrPermissionLog.enable(true)
 
         JdcrPermission.with(this).onExplainBeforeRequest {
 
