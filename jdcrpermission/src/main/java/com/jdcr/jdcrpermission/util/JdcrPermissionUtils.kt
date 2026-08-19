@@ -2,7 +2,6 @@ package com.jdcr.jdcrpermission.util
 
 import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -11,6 +10,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.jdcr.jdcrpermission.handler.JdcrOpenActionHandler
+import com.jdcr.jdcrpermission.result.JdcrPermissionState
 
 object JdcrPermissionUtils {
 
@@ -23,9 +23,33 @@ object JdcrPermissionUtils {
         sp.edit().putStringSet(KEY, set).apply()
     }
 
-    private fun hasRequested(context: Context, permission: String): Boolean =
-        context.applicationContext.getSharedPreferences(SP, Context.MODE_PRIVATE)
-            .getStringSet(KEY, emptySet())!!.contains(permission)
+    internal fun hasRequested(context: Context, permission: String): Boolean =
+        context.applicationContext
+            .getSharedPreferences(SP, Context.MODE_PRIVATE)
+            .getStringSet(KEY, emptySet())
+            .orEmpty()
+            .contains(permission)
+
+    internal fun getState(
+        activity: Activity,
+        permission: String
+    ): JdcrPermissionState {
+        if (isGranted(activity, permission)) {
+            return JdcrPermissionState.GRANTED
+        }
+
+        if (!hasRequested(activity, permission)) {
+            return JdcrPermissionState.DENIED_NOT_REQUESTED
+        }
+
+        return if (
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+        ) {
+            JdcrPermissionState.DENIED_SHOW_RATIONALE
+        } else {
+            JdcrPermissionState.DENIED_NO_RATIONALE
+        }
+    }
 
     fun isGranted(context: Context, permission: String) =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

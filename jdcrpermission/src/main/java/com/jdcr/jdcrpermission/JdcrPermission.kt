@@ -72,9 +72,17 @@ class JdcrPermission private constructor(
         apply { after = block }
 
     fun request(callback: (JdcrPermissionResult) -> Unit) {
+        val currentPermissions = permissions.toList()
+        val currentBefore = before
+        val currentAfter = after
+
+        permissions.clear()
+        before = null
+        after = null
+
         val handler = JdcrPermissionHandler(
             activity, lifecycleOwner, registry, aliveCheck,
-            permissions.toList(), before, after, callback
+            currentPermissions, currentBefore, currentAfter, callback
         )
         JdcrPermissionDispatcher.enqueue(lifecycleOwner, handler)
     }

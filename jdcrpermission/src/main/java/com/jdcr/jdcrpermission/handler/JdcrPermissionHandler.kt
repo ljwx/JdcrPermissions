@@ -10,7 +10,9 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.jdcr.jdcrpermission.ExplainScope
+import com.jdcr.jdcrpermission.result.JdcrPermissionDetail
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
+import com.jdcr.jdcrpermission.result.JdcrPermissionState
 import com.jdcr.jdcrpermission.util.JdcrPermissionLog
 import com.jdcr.jdcrpermission.util.JdcrPermissionUtils
 import java.util.concurrent.atomic.AtomicLong
@@ -46,6 +48,10 @@ internal class JdcrPermissionHandler(
     private var completed = false
     internal var completeListener: (() -> Unit)? = null
 
+    private val statesBefore = LinkedHashMap<String, JdcrPermissionState>()
+    private val launchedPermissions = LinkedHashSet<String>()
+    private val systemResults = LinkedHashMap<String, Boolean>()
+
     fun start() {
         JdcrPermissionLog.i("触发权限请求逻辑")
         if (requested.isEmpty() || !aliveCheck()) {
@@ -55,11 +61,18 @@ internal class JdcrPermissionHandler(
         permissionLauncher = registry.register(
             "jdcr_permission_$id",
             ActivityResultContracts.RequestMultiplePermissions()
-        ) {
+        ) { results ->
+            systemResults.putAll(results)
             onPermissionResult()
         }
 
         lifecycleOwner.lifecycle.addObserver(this)
+
+        requested.distinct().forEach { permission ->
+            val state = JdcrPermissionUtils.getState(activity, permission)
+            statesBefore[permission] = state
+            JdcrPermissionLog.i("请求前的权限状态,$permission:$${state.name}")
+        }
 
         val denied = requested.filterNot { JdcrPermissionUtils.isGranted(activity, it) }
         if (denied.isEmpty()) {
@@ -85,6 +98,7 @@ internal class JdcrPermissionHandler(
         if (!aliveCheck()) {
             onRelease(); onComplete(); return
         }
+        launchedPermissions.addAll(permissions)
         JdcrPermissionUtils.markRequested(activity, permissions)
         permissionLauncher?.launch(permissions.toTypedArray())
     }
@@ -108,12 +122,18 @@ internal class JdcrPermissionHandler(
     private fun deliver() {
         if (finished) return
         finished = true
-        val granted = requested.filter { JdcrPermissionUtils.isGranted(activity, it) }
-        val denied = requested.filterNot { JdcrPermissionUtils.isGranted(activity, it) }
-        val forever = denied.filter { JdcrPermissionUtils.isForeverDenied(activity, it) }
+        val details = requested.distinct().map { permission ->
+            JdcrPermissionDetail(
+                permission = permission,
+                stateBefore = statesBefore.getValue(permission),
+                requestLaunched = permission in launchedPermissions,
+                systemGranted = systemResults[permission],
+                stateAfter = JdcrPermissionUtils.getState(activity, permission)
+            )
+        }
 
         onRelease()
-        val result = JdcrPermissionResult(denied.isEmpty(), granted, denied, forever)
+        val result = JdcrPermissionResult(details)
         JdcrPermissionLog.i("回调调用方最终结果:${result}")
         callback(result)
         onComplete()
