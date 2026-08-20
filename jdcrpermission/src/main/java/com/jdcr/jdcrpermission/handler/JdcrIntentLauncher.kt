@@ -9,11 +9,11 @@ import androidx.lifecycle.LifecycleOwner
 import com.jdcr.jdcrpermission.util.JdcrPermissionLog
 import java.util.concurrent.atomic.AtomicLong
 
-class JdcrOpenActionHandler(
+class JdcrIntentLauncher(
     private val lifecycleOwner: LifecycleOwner,
     private val registry: ActivityResultRegistry,
     private val intent: Intent,
-    private val callback: () -> Unit
+    private val onReturned: () -> Unit
 ) : DefaultLifecycleObserver {
 
     private companion object {
@@ -21,38 +21,38 @@ class JdcrOpenActionHandler(
     }
 
     private val id = SEQ.incrementAndGet()
-    private var settingsLauncher: ActivityResultLauncher<Intent>? = null
+    private var launcher: ActivityResultLauncher<Intent>? = null
 
-    private fun create() {
-        if (settingsLauncher == null) {
+    private fun ensureLauncher() {
+        if (launcher == null) {
             synchronized(this) {
-                settingsLauncher ?: registry.register(
+                launcher ?: registry.register(
                     "jdcr_permission_action_$id",
                     ActivityResultContracts.StartActivityForResult()
                 ) {
                     JdcrPermissionLog.i("从意图页回来:${intent.action}")
-                    onRelease()
-                    callback()
-                }.also { settingsLauncher = it }
+                    release()
+                    onReturned()
+                }.also { launcher = it }
             }
         }
     }
 
     fun start() {
-        create()
+        ensureLauncher()
         lifecycleOwner.lifecycle.addObserver(this)
-        JdcrPermissionLog.i("跳转意图页:${intent.action}")
-        settingsLauncher?.launch(intent)
+        JdcrPermissionLog.i("启动跳转意图页:${intent.action}")
+        launcher?.launch(intent)
     }
 
-    fun onRelease() {
+    fun release() {
         JdcrPermissionLog.i("清除跳转意图页的监听器:${intent.action}")
-        settingsLauncher?.unregister(); settingsLauncher = null
+        launcher?.unregister(); launcher = null
         lifecycleOwner.lifecycle.removeObserver(this)
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
-        onRelease()
+        release()
         super.onDestroy(owner)
     }
 

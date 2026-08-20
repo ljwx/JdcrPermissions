@@ -2,7 +2,8 @@ package com.jdcr.jdcrpermission.handler
 
 import android.Manifest
 import android.content.Context
-import com.jdcr.jdcrpermission.ExplainScope
+import com.jdcr.jdcrpermission.BeforePermissionRequestScope
+import com.jdcr.jdcrpermission.PermanentlyDeniedScope
 import com.jdcr.jdcrpermission.PermissionTestActivity
 import com.jdcr.jdcrpermission.RecordingActivityResultRegistry
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
@@ -125,7 +126,7 @@ class JdcrPermissionHandlerTest {
         val permission = Manifest.permission.CAMERA
         val registry = RecordingActivityResultRegistry { error("request must not be launched") }
         var result: JdcrPermissionResult? = null
-        val before: ExplainScope.(List<String>) -> Unit = { cancel() }
+        val before: BeforePermissionRequestScope.() -> Unit = { cancel() }
 
         handler(registry, listOf(permission), before = before) { result = it }.start()
 
@@ -145,7 +146,7 @@ class JdcrPermissionHandlerTest {
             permissions.associateWith { false }
         }
         var result: JdcrPermissionResult? = null
-        val after: ExplainScope.(List<String>) -> Unit = {
+        val after: PermanentlyDeniedScope.() -> Unit = {
             activity.grantedPermissions += permissions
             cancel()
         }
@@ -163,8 +164,8 @@ class JdcrPermissionHandlerTest {
     private fun handler(
         registry: RecordingActivityResultRegistry,
         requested: List<String>,
-        before: (ExplainScope.(List<String>) -> Unit)? = null,
-        after: (ExplainScope.(List<String>) -> Unit)? = null,
+        before: (BeforePermissionRequestScope.() -> Unit)? = null,
+        after: (PermanentlyDeniedScope.() -> Unit)? = null,
         callback: (JdcrPermissionResult) -> Unit
     ) = JdcrPermissionHandler(
         activity = activity,
@@ -173,7 +174,7 @@ class JdcrPermissionHandlerTest {
         aliveCheck = { true },
         requested = requested,
         before = before,
-        after = after,
+        permanentlyDenied = after,
         callback = callback
     )
 }

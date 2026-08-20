@@ -10,12 +10,17 @@ import com.jdcr.jdcrbase.page.toActivity
 import com.jdcr.jdcrpermission.handler.JdcrPermissionDispatcher
 import com.jdcr.jdcrpermission.handler.JdcrPermissionHandler
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
-import com.jdcr.jdcrpermission.util.JdcrPermissionUtils
 
-interface ExplainScope {
+interface BeforePermissionRequestScope {
     val permissions: List<String>
-    fun proceed()   // before: 继续发起系统请求; after: 跳转应用设置页
+    fun proceed()   // before: 继续发起系统请求
     fun cancel()    // 放弃, 直接回调当前结果
+}
+
+interface PermanentlyDeniedScope {
+    val permissions: List<String>
+    fun openSettings()
+    fun cancel()
 }
 
 class JdcrPermission private constructor(
@@ -61,24 +66,22 @@ class JdcrPermission private constructor(
     }
 
     private val permissions = LinkedHashSet<String>()
-    private var before: (ExplainScope.(List<String>) -> Unit)? = null
-    private var after: (ExplainScope.(List<String>) -> Unit)? = null
+    private var beforeRequest: (BeforePermissionRequestScope.() -> Unit)? = null
+    private var permanentlyDenied: (PermanentlyDeniedScope.() -> Unit)? = null
     fun permissions(vararg permission: String) = apply { permissions += permission }
     fun permissions(p: Collection<String>) = apply { permissions += p }
-    fun onExplainBeforeRequest(block: ExplainScope.(deniedList: List<String>) -> Unit) =
-        apply { before = block }
+    fun onExplainBeforeRequest(block: BeforePermissionRequestScope.() -> Unit) = apply { beforeRequest = block }
 
-    fun onExplainAfterDenied(block: ExplainScope.(foreverDeniedList: List<String>) -> Unit) =
-        apply { after = block }
+    fun onPermanentlyDenied(block: PermanentlyDeniedScope.() -> Unit) = apply { permanentlyDenied = block }
 
     fun request(callback: (JdcrPermissionResult) -> Unit) {
         val currentPermissions = permissions.toList()
-        val currentBefore = before
-        val currentAfter = after
+        val currentBefore = beforeRequest
+        val currentAfter = permanentlyDenied
 
         permissions.clear()
-        before = null
-        after = null
+        beforeRequest = null
+        permanentlyDenied = null
 
         val handler = JdcrPermissionHandler(
             activity, lifecycleOwner, registry, aliveCheck,

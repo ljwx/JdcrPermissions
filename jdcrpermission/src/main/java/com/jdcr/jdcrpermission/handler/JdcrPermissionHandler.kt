@@ -9,7 +9,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import com.jdcr.jdcrpermission.ExplainScope
+import com.jdcr.jdcrpermission.BeforePermissionRequestScope
+import com.jdcr.jdcrpermission.PermanentlyDeniedScope
 import com.jdcr.jdcrpermission.result.JdcrPermissionDetail
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
 import com.jdcr.jdcrpermission.result.JdcrPermissionState
@@ -23,8 +24,8 @@ internal class JdcrPermissionHandler(
     private val registry: ActivityResultRegistry,
     private val aliveCheck: () -> Boolean,
     private val requested: List<String>,
-    private val before: (ExplainScope.(List<String>) -> Unit)?,
-    private val after: (ExplainScope.(List<String>) -> Unit)?,
+    private val before: (BeforePermissionRequestScope.() -> Unit)?,
+    private val permanentlyDenied: (PermanentlyDeniedScope.() -> Unit)?,
     private val callback: (JdcrPermissionResult) -> Unit
 ) : DefaultLifecycleObserver {
 
@@ -34,13 +35,13 @@ internal class JdcrPermissionHandler(
 
     private val id = SEQ.incrementAndGet()
     private var permissionLauncher: ActivityResultLauncher<Array<String>>? = null
-    private var actionController = JdcrOpenActionHandler(
+    private val appSettingsLauncher = JdcrIntentLauncher(
         lifecycleOwner,
         registry,
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.fromParts("package", activity.packageName, null)
         }) {
-        JdcrPermissionLog.i("跳转App详情设置页后回来")
+        JdcrPermissionLog.i("跳转App详情设置页后,返回了当前页")
         deliver()
     }
 
@@ -53,12 +54,12 @@ internal class JdcrPermissionHandler(
     private val systemResults = LinkedHashMap<String, Boolean>()
 
     fun start() {
-        JdcrPermissionLog.i("触发权限请求逻辑")
+        JdcrPermissionLog.i("触发权限请求流程起点")
         if (requested.isEmpty()) {
             deliver(); return
         }
         if (!aliveCheck()) {
-            onComplete(); return
+            complete(); return
         }
 
         permissionLauncher = registry.register(
@@ -86,10 +87,10 @@ internal class JdcrPermissionHandler(
         val before = before
         if (before != null) {
             JdcrPermissionLog.w("触发前置解释:${deniedContent}")
-            before.invoke(scope(denied) {
+            before.invoke(explainScope(denied) {
                 JdcrPermissionLog.i("解释通过,发起权限请求:${deniedContent}")
                 launch(denied)
-            }, denied)
+            })
         } else {
             JdcrPermissionLog.i("不用解释,发起权限请求:${deniedContent}")
             launch(denied)
@@ -99,7 +100,7 @@ internal class JdcrPermissionHandler(
 
     private fun launch(permissions: List<String>) {
         if (!aliveCheck()) {
-            onRelease(); onComplete(); return
+            release(); complete(); return
         }
         launchedPermissions.addAll(permissions)
         JdcrPermissionUtils.markRequested(activity, permissions)
@@ -113,16 +114,16 @@ internal class JdcrPermissionHandler(
         if (denied.isEmpty()) {
             deliver(); return
         }
-        val after = after
-        val forever = denied.filter { JdcrPermissionUtils.isForeverDenied(activity, it) }
-        if (after != null && forever.isNotEmpty()) {
-            val foreverContent = forever.toTypedArray().contentToString()
-            JdcrPermissionLog.i("被永久拒绝的权限:${foreverContent}")
-            after.invoke(scope(forever) { openSettings() }, forever)
+        val after = permanentlyDenied
+        val permanently = denied.filter { JdcrPermissionUtils.isPermanentlyDenied(activity, it) }
+        if (after != null && permanently.isNotEmpty()) {
+            JdcrPermissionLog.i("被永久拒绝的权限:${permanently.toTypedArray().contentToString()}")
+            after.invoke(permanentlyDeniedScope(permanently) { openSettings() })
         } else deliver()
     }
 
     private fun deliver() {
+        JdcrPermissionLog.i("触发权限结果交付")
         if (finished) return
         finished = true
         val details = requested.distinct().map { permission ->
@@ -135,42 +136,52 @@ internal class JdcrPermissionHandler(
             )
         }
 
-        onRelease()
+        release()
         val result = JdcrPermissionResult(details)
-        JdcrPermissionLog.i("回调调用方最终结果:${result}")
+        JdcrPermissionLog.i("回调最终交付结果:${result}")
         callback(result)
-        onComplete()
+        complete()
     }
 
     private fun openSettings() {
+        JdcrPermissionLog.i("触发跳转设置页")
         if (!aliveCheck()) {
             deliver(); return
         }
-        actionController.start()
+        appSettingsLauncher.start()
     }
 
-    fun onComplete() {
-        JdcrPermissionLog.i("触发权限请求完成")
+    private fun complete() {
         if (completed) return
         completed = true
+        JdcrPermissionLog.i("结束一次权限请求任务")
         completeListener?.invoke()
     }
 
-    private fun onRelease() {
+    private fun release() {
+        JdcrPermissionLog.i("释放权限请求资源")
         permissionLauncher?.unregister(); permissionLauncher = null
-        actionController.onRelease()
+        appSettingsLauncher.release()
         lifecycleOwner.lifecycle.removeObserver(this)
     }
 
-    private fun scope(permissions: List<String>, onProceed: () -> Unit) = object : ExplainScope {
-        override val permissions = permissions
-        override fun proceed() = onProceed()
-        override fun cancel() = deliver()
-    }
+    private fun explainScope(permissions: List<String>, onProceed: () -> Unit) =
+        object : BeforePermissionRequestScope {
+            override val permissions = permissions
+            override fun proceed() = onProceed()
+            override fun cancel() = deliver()
+        }
+
+    private fun permanentlyDeniedScope(permissions: List<String>, onOpenSettings: () -> Unit) =
+        object : PermanentlyDeniedScope {
+            override val permissions = permissions
+            override fun openSettings() = onOpenSettings()
+            override fun cancel() = deliver()
+        }
 
     override fun onDestroy(owner: LifecycleOwner) {
-        onRelease()
-        onComplete()
+        release()
+        complete()
         super.onDestroy(owner)
     }
 

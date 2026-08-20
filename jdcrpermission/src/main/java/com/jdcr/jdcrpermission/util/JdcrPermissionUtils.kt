@@ -9,7 +9,7 @@ import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.jdcr.jdcrpermission.handler.JdcrOpenActionHandler
+import com.jdcr.jdcrpermission.handler.JdcrIntentLauncher
 import com.jdcr.jdcrpermission.result.JdcrPermissionState
 
 object JdcrPermissionUtils {
@@ -54,12 +54,12 @@ object JdcrPermissionUtils {
     fun isGranted(context: Context, permission: String) =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
-    fun isForeverDenied(activity: Activity, permission: String): Boolean =
+    fun isPermanentlyDenied(activity: Activity, permission: String): Boolean =
         !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission) &&
                 hasRequested(activity, permission)
 
     fun openAppSettings(activity: FragmentActivity, callback: () -> Unit) {
-        JdcrOpenActionHandler(
+        JdcrIntentLauncher(
             activity, activity.activityResultRegistry,
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.fromParts("package", activity.packageName, null)
@@ -67,10 +67,10 @@ object JdcrPermissionUtils {
         ).start()
     }
 
-    fun openIntent(activity: FragmentActivity, intent: Intent, callback: () -> Unit) {
-        JdcrOpenActionHandler(
+    fun launchIntent(activity: FragmentActivity, intent: Intent, onReturned: () -> Unit) {
+        JdcrIntentLauncher(
             activity, activity.activityResultRegistry,
-            intent, callback
+            intent, onReturned
         ).start()
     }
 
