@@ -54,7 +54,10 @@ internal class JdcrPermissionHandler(
 
     fun start() {
         JdcrPermissionLog.i("触发权限请求逻辑")
-        if (requested.isEmpty() || !aliveCheck()) {
+        if (requested.isEmpty()) {
+            deliver(); return
+        }
+        if (!aliveCheck()) {
             onComplete(); return
         }
 

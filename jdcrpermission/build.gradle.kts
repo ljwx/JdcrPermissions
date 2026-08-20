@@ -11,7 +11,7 @@ android {
     defaultConfig {
         minSdk = 24
 
-        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
 
@@ -31,6 +31,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -38,6 +41,14 @@ dependencies {
     api(jdcr.androidx.lifecycle)
     api(jdcr.jdcr.dev.base)
     api(jdcr.jdcr.log)
+
+    testImplementation(libs.junit)
+    testImplementation("org.robolectric:robolectric:4.10.3") {
+        exclude(group = "org.robolectric", module = "nativeruntime")
+    }
+
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation("androidx.test:runner:1.5.2")
 }
 
 afterEvaluate {
