@@ -17,10 +17,9 @@ interface BeforePermissionRequestScope {
     fun cancel()    // 放弃, 直接回调当前结果
 }
 
-interface PermanentlyDeniedScope {
+interface DeniedNoRationaleScope {
     val permissions: List<String>
-    fun openSettings()
-    fun cancel()
+    fun finish()
 }
 
 class JdcrPermission private constructor(
@@ -67,25 +66,24 @@ class JdcrPermission private constructor(
 
     private val permissions = LinkedHashSet<String>()
     private var beforeRequest: (BeforePermissionRequestScope.() -> Unit)? = null
-    private var permanentlyDenied: (PermanentlyDeniedScope.() -> Unit)? = null
+    private var deniedNoRationale: (DeniedNoRationaleScope.() -> Unit)? = null
     fun permissions(vararg permission: String) = apply { permissions += permission }
     fun permissions(p: Collection<String>) = apply { permissions += p }
     fun onExplainBeforeRequest(block: BeforePermissionRequestScope.() -> Unit) = apply { beforeRequest = block }
-
-    fun onPermanentlyDenied(block: PermanentlyDeniedScope.() -> Unit) = apply { permanentlyDenied = block }
+    fun onDeniedNoRationale(block: DeniedNoRationaleScope.() -> Unit) = apply { deniedNoRationale = block }
 
     fun request(callback: (JdcrPermissionResult) -> Unit) {
         val currentPermissions = permissions.toList()
         val currentBefore = beforeRequest
-        val currentAfter = permanentlyDenied
+        val currentDeniedNoRationale = deniedNoRationale
 
         permissions.clear()
         beforeRequest = null
-        permanentlyDenied = null
+        deniedNoRationale = null
 
         val handler = JdcrPermissionHandler(
             activity, lifecycleOwner, registry, aliveCheck,
-            currentPermissions, currentBefore, currentAfter, callback
+            currentPermissions, currentBefore, currentDeniedNoRationale, callback
         )
         JdcrPermissionDispatcher.enqueue(lifecycleOwner, handler)
     }

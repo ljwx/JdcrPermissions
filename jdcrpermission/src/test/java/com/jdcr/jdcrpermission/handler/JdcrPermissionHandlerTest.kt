@@ -3,7 +3,7 @@ package com.jdcr.jdcrpermission.handler
 import android.Manifest
 import android.content.Context
 import com.jdcr.jdcrpermission.BeforePermissionRequestScope
-import com.jdcr.jdcrpermission.PermanentlyDeniedScope
+import com.jdcr.jdcrpermission.DeniedNoRationaleScope
 import com.jdcr.jdcrpermission.PermissionTestActivity
 import com.jdcr.jdcrpermission.RecordingActivityResultRegistry
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
@@ -13,6 +13,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -70,7 +71,9 @@ class JdcrPermissionHandlerTest {
         val registry = RecordingActivityResultRegistry { error("request must not be launched") }
         var result: JdcrPermissionResult? = null
 
-        handler(registry, listOf(permission)) { result = it }.start()
+        handler(registry, listOf(permission), after = {
+            error("no-rationale callback must not run for a granted permission")
+        }) { result = it }.start()
 
         assertTrue(result!!.allGranted)
         assertTrue(registry.launchedPermissions.isEmpty())
@@ -91,7 +94,9 @@ class JdcrPermissionHandlerTest {
         }
         var result: JdcrPermissionResult? = null
 
-        handler(registry, listOf(permission)) { result = it }.start()
+        handler(registry, listOf(permission), after = {
+            error("no-rationale callback must not run when rationale is available")
+        }) { result = it }.start()
 
         assertEquals(listOf(listOf(permission)), registry.launchedPermissions)
         with(result!!.details.single()) {
@@ -110,8 +115,11 @@ class JdcrPermissionHandlerTest {
             permissions.associateWith { false }
         }
         var result: JdcrPermissionResult? = null
+        var completionCount = 0
 
-        handler(registry, listOf(permission)) { result = it }.start()
+        val request = handler(registry, listOf(permission)) { result = it }
+        request.completeListener = { completionCount++ }
+        request.start()
 
         with(result!!.details.single()) {
             assertEquals(JdcrPermissionState.DENIED_NO_RATIONALE, stateBefore)
@@ -119,6 +127,114 @@ class JdcrPermissionHandlerTest {
             assertEquals(false, systemGranted)
             assertEquals(JdcrPermissionState.DENIED_NO_RATIONALE, stateAfter)
         }
+        assertEquals(listOf(permission), result!!.deniedNoRationale)
+        assertEquals(1, completionCount)
+    }
+
+    @Test
+    fun `no-rationale handler waits for finish and reports state after external handling`() {
+        val permission = Manifest.permission.CAMERA
+        JdcrPermissionUtils.markRequested(activity, listOf(permission))
+        val registry = RecordingActivityResultRegistry { permissions ->
+            permissions.associateWith { false }
+        }
+        val events = mutableListOf<String>()
+        var scope: DeniedNoRationaleScope? = null
+        var result: JdcrPermissionResult? = null
+        val after: DeniedNoRationaleScope.() -> Unit = {
+            events += "denied"
+            scope = this
+        }
+        val request = handler(registry, listOf(permission), after = after) {
+            events += "result"
+            result = it
+        }
+        request.completeListener = { events += "complete" }
+
+        request.start()
+
+        assertEquals(listOf("denied"), events)
+        assertEquals(listOf(permission), scope!!.permissions)
+        assertNull(result)
+
+        activity.grantedPermissions += permission
+        scope!!.finish()
+        scope!!.finish()
+
+        assertEquals(listOf("denied", "result", "complete"), events)
+        with(result!!.details.single()) {
+            assertEquals(false, systemGranted)
+            assertEquals(JdcrPermissionState.GRANTED, stateAfter)
+        }
+        assertTrue(result!!.allGranted)
+    }
+
+    @Test
+    fun `next queued request starts only after no-rationale handling finishes`() {
+        val deniedPermission = Manifest.permission.CAMERA
+        val grantedPermission = Manifest.permission.RECORD_AUDIO
+        JdcrPermissionUtils.markRequested(activity, listOf(deniedPermission))
+        activity.grantedPermissions += grantedPermission
+        val registry = RecordingActivityResultRegistry { permissions ->
+            permissions.associateWith { false }
+        }
+        var scope: DeniedNoRationaleScope? = null
+        val results = mutableListOf<String>()
+        val first = handler(registry, listOf(deniedPermission), after = { scope = this }) {
+            results += "first"
+        }
+        val second = handler(registry, listOf(grantedPermission)) {
+            results += "second"
+        }
+
+        JdcrPermissionDispatcher.enqueue(activity, first)
+        JdcrPermissionDispatcher.enqueue(activity, second)
+
+        assertTrue(results.isEmpty())
+        scope!!.finish()
+        assertEquals(listOf("first", "second"), results)
+    }
+
+    @Test
+    fun `first automatic denial without rationale is reported without claiming permanence`() {
+        val permission = Manifest.permission.CAMERA
+        val registry = RecordingActivityResultRegistry { permissions ->
+            permissions.associateWith { false }
+        }
+        var scope: DeniedNoRationaleScope? = null
+        var result: JdcrPermissionResult? = null
+
+        handler(registry, listOf(permission), after = { scope = this }) {
+            result = it
+        }.start()
+
+        assertNull(result)
+        scope!!.finish()
+        with(result!!.details.single()) {
+            assertEquals(JdcrPermissionState.DENIED_NOT_REQUESTED, stateBefore)
+            assertEquals(JdcrPermissionState.DENIED_NO_RATIONALE, stateAfter)
+        }
+    }
+
+    @Test
+    fun `exception in no-rationale callback still completes request and queue`() {
+        val permission = Manifest.permission.CAMERA
+        val failure = IllegalStateException("dialog failed")
+        val registry = RecordingActivityResultRegistry { permissions ->
+            permissions.associateWith { false }
+        }
+        var resultCount = 0
+        var completionCount = 0
+        val request = handler(registry, listOf(permission), after = { throw failure }) {
+            resultCount++
+        }
+        request.completeListener = { completionCount++ }
+
+        val thrown = runCatching { request.start() }.exceptionOrNull()
+
+        assertSame(failure, thrown)
+        assertEquals(1, resultCount)
+        assertEquals(1, completionCount)
     }
 
     @Test
@@ -128,7 +244,9 @@ class JdcrPermissionHandlerTest {
         var result: JdcrPermissionResult? = null
         val before: BeforePermissionRequestScope.() -> Unit = { cancel() }
 
-        handler(registry, listOf(permission), before = before) { result = it }.start()
+        handler(registry, listOf(permission), before = before, after = {
+            error("no-rationale callback must not run when system request is canceled")
+        }) { result = it }.start()
 
         assertTrue(registry.launchedPermissions.isEmpty())
         with(result!!.details.single()) {
@@ -139,33 +257,11 @@ class JdcrPermissionHandlerTest {
         }
     }
 
-    @Test
-    fun `system denial and final granted state are recorded separately`() {
-        val permission = Manifest.permission.CAMERA
-        val registry = RecordingActivityResultRegistry { permissions ->
-            permissions.associateWith { false }
-        }
-        var result: JdcrPermissionResult? = null
-        val after: PermanentlyDeniedScope.() -> Unit = {
-            activity.grantedPermissions += permissions
-            cancel()
-        }
-
-        handler(registry, listOf(permission), after = after) { result = it }.start()
-
-        with(result!!.details.single()) {
-            assertEquals(JdcrPermissionState.DENIED_NOT_REQUESTED, stateBefore)
-            assertTrue(requestLaunched)
-            assertEquals(false, systemGranted)
-            assertEquals(JdcrPermissionState.GRANTED, stateAfter)
-        }
-    }
-
     private fun handler(
         registry: RecordingActivityResultRegistry,
         requested: List<String>,
         before: (BeforePermissionRequestScope.() -> Unit)? = null,
-        after: (PermanentlyDeniedScope.() -> Unit)? = null,
+        after: (DeniedNoRationaleScope.() -> Unit)? = null,
         callback: (JdcrPermissionResult) -> Unit
     ) = JdcrPermissionHandler(
         activity = activity,
@@ -174,7 +270,7 @@ class JdcrPermissionHandlerTest {
         aliveCheck = { true },
         requested = requested,
         before = before,
-        permanentlyDenied = after,
+        deniedNoRationale = after,
         callback = callback
     )
 }

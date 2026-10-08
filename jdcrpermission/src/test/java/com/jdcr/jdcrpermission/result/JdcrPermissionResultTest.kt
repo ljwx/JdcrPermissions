@@ -15,6 +15,7 @@ class JdcrPermissionResultTest {
         assertTrue(result.allGranted)
         assertTrue(result.granted.isEmpty())
         assertTrue(result.denied.isEmpty())
+        assertTrue(result.deniedNoRationale.isEmpty())
     }
 
     @Test
@@ -22,13 +23,18 @@ class JdcrPermissionResultTest {
         val result = JdcrPermissionResult(
             listOf(
                 detail(Manifest.permission.CAMERA, JdcrPermissionState.GRANTED),
-                detail(Manifest.permission.RECORD_AUDIO, JdcrPermissionState.DENIED_NO_RATIONALE)
+                detail(Manifest.permission.RECORD_AUDIO, JdcrPermissionState.DENIED_NO_RATIONALE),
+                detail(Manifest.permission.ACCESS_COARSE_LOCATION, JdcrPermissionState.DENIED_SHOW_RATIONALE)
             )
         )
 
         assertFalse(result.allGranted)
         assertEquals(listOf(Manifest.permission.CAMERA), result.granted)
-        assertEquals(listOf(Manifest.permission.RECORD_AUDIO), result.denied)
+        assertEquals(
+            listOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.ACCESS_COARSE_LOCATION),
+            result.denied
+        )
+        assertEquals(listOf(Manifest.permission.RECORD_AUDIO), result.deniedNoRationale)
     }
 
     private fun detail(permission: String, stateAfter: JdcrPermissionState) =

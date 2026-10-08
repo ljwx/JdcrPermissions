@@ -36,4 +36,9 @@ data class JdcrPermissionResult(
         get() = details.filter {
             it.stateAfter != JdcrPermissionState.GRANTED
         }.map { it.permission }
+
+    val deniedNoRationale: List<String>
+        get() = details.filter {
+            it.stateAfter == JdcrPermissionState.DENIED_NO_RATIONALE
+        }.map { it.permission }
 }

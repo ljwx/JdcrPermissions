@@ -1,8 +1,5 @@
 package com.jdcr.jdcrpermission.handler
 
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,7 +7,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.jdcr.jdcrpermission.BeforePermissionRequestScope
-import com.jdcr.jdcrpermission.PermanentlyDeniedScope
+import com.jdcr.jdcrpermission.DeniedNoRationaleScope
 import com.jdcr.jdcrpermission.result.JdcrPermissionDetail
 import com.jdcr.jdcrpermission.result.JdcrPermissionResult
 import com.jdcr.jdcrpermission.result.JdcrPermissionState
@@ -25,7 +22,7 @@ internal class JdcrPermissionHandler(
     private val aliveCheck: () -> Boolean,
     private val requested: List<String>,
     private val before: (BeforePermissionRequestScope.() -> Unit)?,
-    private val permanentlyDenied: (PermanentlyDeniedScope.() -> Unit)?,
+    private val deniedNoRationale: (DeniedNoRationaleScope.() -> Unit)?,
     private val callback: (JdcrPermissionResult) -> Unit
 ) : DefaultLifecycleObserver {
 
@@ -35,16 +32,6 @@ internal class JdcrPermissionHandler(
 
     private val id = SEQ.incrementAndGet()
     private var permissionLauncher: ActivityResultLauncher<Array<String>>? = null
-    private val appSettingsLauncher = JdcrIntentLauncher(
-        lifecycleOwner,
-        registry,
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.fromParts("package", activity.packageName, null)
-        }) {
-        JdcrPermissionLog.i("跳转App详情设置页后,返回了当前页")
-        deliver()
-    }
-
     private var finished = false
     private var completed = false
     internal var completeListener: (() -> Unit)? = null
@@ -54,7 +41,7 @@ internal class JdcrPermissionHandler(
     private val systemResults = LinkedHashMap<String, Boolean>()
 
     fun start() {
-        JdcrPermissionLog.i("触发权限请求流程起点")
+        JdcrPermissionLog.i("权限请求流程起点")
         if (requested.isEmpty()) {
             deliver(); return
         }
@@ -108,23 +95,37 @@ internal class JdcrPermissionHandler(
     }
 
     private fun onPermissionResult() {
-        if (finished) return
-        val denied = requested.filterNot { JdcrPermissionUtils.isGranted(activity, it) }
-        JdcrPermissionLog.i("请求后被拒绝的权限:${denied.toTypedArray().contentToString()}")
-        if (denied.isEmpty()) {
-            deliver(); return
+        if (finished || completed) return
+        val denied = requested.distinct().filter { permission ->
+            systemResults[permission] == false &&
+                    JdcrPermissionUtils.getState(activity, permission) ==
+                    JdcrPermissionState.DENIED_NO_RATIONALE
         }
-        val after = permanentlyDenied
-        val permanently = denied.filter { JdcrPermissionUtils.isPermanentlyDenied(activity, it) }
-        if (after != null && permanently.isNotEmpty()) {
-            JdcrPermissionLog.i("被永久拒绝的权限:${permanently.toTypedArray().contentToString()}")
-            after.invoke(permanentlyDeniedScope(permanently) { openSettings() })
-        } else deliver()
+        val after = deniedNoRationale
+        if (after == null || denied.isEmpty()) {
+            deliver()
+            return
+        }
+
+        JdcrPermissionLog.i("请求后无说明提示的权限:${denied.toTypedArray().contentToString()}")
+        try {
+            after.invoke(object : DeniedNoRationaleScope {
+                override val permissions = denied
+                override fun finish() = deliver()
+            })
+        } catch (failure: Throwable) {
+            try {
+                deliver()
+            } catch (deliveryFailure: Throwable) {
+                failure.addSuppressed(deliveryFailure)
+            }
+            throw failure
+        }
     }
 
     private fun deliver() {
         JdcrPermissionLog.i("触发权限结果交付")
-        if (finished) return
+        if (finished || completed) return
         finished = true
         val details = requested.distinct().map { permission ->
             JdcrPermissionDetail(
@@ -139,16 +140,11 @@ internal class JdcrPermissionHandler(
         release()
         val result = JdcrPermissionResult(details)
         JdcrPermissionLog.i("回调最终交付结果:${result}")
-        callback(result)
-        complete()
-    }
-
-    private fun openSettings() {
-        JdcrPermissionLog.i("触发跳转设置页")
-        if (!aliveCheck()) {
-            deliver(); return
+        try {
+            callback(result)
+        } finally {
+            complete()
         }
-        appSettingsLauncher.start()
     }
 
     private fun complete() {
@@ -161,7 +157,6 @@ internal class JdcrPermissionHandler(
     private fun release() {
         JdcrPermissionLog.i("释放权限请求资源")
         permissionLauncher?.unregister(); permissionLauncher = null
-        appSettingsLauncher.release()
         lifecycleOwner.lifecycle.removeObserver(this)
     }
 
@@ -169,13 +164,6 @@ internal class JdcrPermissionHandler(
         object : BeforePermissionRequestScope {
             override val permissions = permissions
             override fun proceed() = onProceed()
-            override fun cancel() = deliver()
-        }
-
-    private fun permanentlyDeniedScope(permissions: List<String>, onOpenSettings: () -> Unit) =
-        object : PermanentlyDeniedScope {
-            override val permissions = permissions
-            override fun openSettings() = onOpenSettings()
             override fun cancel() = deliver()
         }
 

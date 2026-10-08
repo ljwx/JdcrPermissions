@@ -30,7 +30,7 @@ class JdcrIntentLauncher(
                     "jdcr_permission_action_$id",
                     ActivityResultContracts.StartActivityForResult()
                 ) {
-                    JdcrPermissionLog.i("从意图页回来:${intent.action}")
+                    JdcrPermissionLog.i("从意图页面返回:${intent.action}")
                     release()
                     onReturned()
                 }.also { launcher = it }
@@ -41,12 +41,12 @@ class JdcrIntentLauncher(
     fun start() {
         ensureLauncher()
         lifecycleOwner.lifecycle.addObserver(this)
-        JdcrPermissionLog.i("启动跳转意图页:${intent.action}")
+        JdcrPermissionLog.i("跳转意图页面:${intent.action}")
         launcher?.launch(intent)
     }
 
     fun release() {
-        JdcrPermissionLog.i("清除跳转意图页的监听器:${intent.action}")
+        JdcrPermissionLog.i("释放意图页面监听器:${intent.action}")
         launcher?.unregister(); launcher = null
         lifecycleOwner.lifecycle.removeObserver(this)
     }
